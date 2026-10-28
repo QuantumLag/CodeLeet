@@ -20,9 +20,9 @@ const ErrorPage = ({ data }: { data: ErrorPage }) => {
                 className="inline-block relative text-[24px] font-bold italic left-1/2 -translate-x-1/2 mt-[12px]"
             >
                 <span className="font-extrabold text-text_2 px-[1px]">
-                    Fire
+                    Code
                 </span>
-                <span>Code</span>
+                <span>Leet</span>
             </div>
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 text-center ">
                 <div className="">
