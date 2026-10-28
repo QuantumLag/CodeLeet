@@ -1,0 +1,9 @@
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Code2, Trophy, Plus, LayoutGrid, Search } from "lucide-react";
+const links = [{ href: "/problems", label: "Problems", icon: LayoutGrid }, { href: "/leaderboard", label: "Leaderboard", icon: Trophy }, { href: "/admin/problems/create", label: "Create problem", icon: Plus }];
+export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  return <div className="min-h-screen bg-[#f7f8fa] text-slate-900"><header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur"><div className="mx-auto flex h-[68px] max-w-[1240px] items-center justify-between px-6"><Link href="/problems" className="flex items-center gap-2.5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white"><Code2 size={19}/></span><span className="text-[17px] font-bold tracking-tight">code<span className="text-indigo-600">leet</span></span></Link><nav className="flex h-full items-center gap-1">{links.map(({href,label,icon:Icon})=><Link key={href} href={href} className={`flex h-full items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition ${pathname===href || (href==="/problems"&&pathname.startsWith("/problems/")) ? "border-indigo-600 text-indigo-700":"border-transparent text-slate-500 hover:text-slate-900"}`}><Icon size={15}/>{label}</Link>)}</nav><div className="flex items-center gap-3"><button className="text-slate-400 hover:text-slate-700" aria-label="Search"><Search size={17}/></button><span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800">JD</span></div></div></header><main className="mx-auto max-w-[1240px] px-6 py-10">{children}</main><footer className="mx-auto max-w-[1240px] px-6 pb-8 text-xs text-slate-400">Codeleet · Practice makes progress</footer></div>;
+}

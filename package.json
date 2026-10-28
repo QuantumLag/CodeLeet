@@ -1,0 +1,8 @@
+{
+  "name": "codeleet-judge-ui",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "server:dev": "tsx watch server/src/index.ts", "server:start": "tsx server/src/index.ts", "worker:dev": "tsx watch worker/src/index.ts", "worker:start": "tsx worker/src/index.ts", "websocket:dev": "tsx watch websocket/src/index.ts", "websocket:start": "tsx websocket/src/index.ts", "db:init": "tsx server/src/init-db.ts" },
+  "dependencies": { "bullmq": "^5.34.10", "cors": "^2.8.5", "dotenv": "^16.4.7", "express": "^4.21.2", "ioredis": "^5.4.2", "next": "14.2.15", "pg": "^8.13.1", "react": "^18.3.1", "react-dom": "^18.3.1", "socket.io-client": "^4.8.1", "lucide-react": "^0.468.0", "zod": "^3.24.1" },
+  "devDependencies": { "@types/cors": "^2.8.17", "@types/express": "^5.0.0", "@types/node": "^22.10.2", "@types/pg": "^8.11.10", "@types/react": "^18.3.18", "@types/react-dom": "^18.3.5", "autoprefixer": "^10.4.20", "postcss": "^8.4.49", "tailwindcss": "^3.4.16", "tsx": "^4.19.2", "typescript": "^5.7.2" }
+}

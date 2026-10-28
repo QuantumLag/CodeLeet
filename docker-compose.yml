@@ -1,0 +1,194 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codeleet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+      POSTGRES_DB: ${POSTGRES_DB:-codeleet}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-judge0.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [judge_net]
+
+  redis:
+    image: redis:7-alpine
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [judge_net]
+
+  judge0:
+    profiles: ["judge"]
+    image: judge0/judge0:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: judge0
+      POSTGRES_USER: ${POSTGRES_USER:-codeleet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+      JUDGE0_TELEMETRY_ENABLE: "false"
+      ENABLE_WAIT_RESULT: "true"
+      ENABLE_NETWORK: "false"
+      ALLOW_ENABLE_NETWORK: "false"
+    expose:
+      - "2358"
+    restart: unless-stopped
+    networks: [judge_net]
+
+  judge0-executor:
+    profiles: ["judge"]
+    image: judge0/judge0:latest
+    command: ["./scripts/workers"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: judge0
+      POSTGRES_USER: ${POSTGRES_USER:-codeleet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+      JUDGE0_TELEMETRY_ENABLE: "false"
+      ENABLE_NETWORK: "false"
+      ALLOW_ENABLE_NETWORK: "false"
+    cap_add:
+      - SYS_ADMIN
+      - SETUID
+      - SETGID
+      - SYS_CHROOT
+      - DAC_OVERRIDE
+    security_opt:
+      - seccomp:unconfined
+    restart: unless-stopped
+    networks: [judge_net]
+
+  db-init:
+    build:
+      context: .
+      target: db-init
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://codeleet:change-this-local-password@postgres:5432/codeleet}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [judge_net]
+    restart: "no"
+
+  backend-api:
+    build:
+      context: .
+      target: backend-api
+    environment:
+      PORT: 5000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://codeleet:change-this-local-password@postgres:5432/codeleet}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5000:5000"
+    restart: unless-stopped
+    networks: [judge_net]
+
+  worker:
+    profiles: ["judge"]
+    build:
+      context: .
+      target: worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://codeleet:change-this-local-password@postgres:5432/codeleet}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+      JUDGE0_URL: http://judge0:2358
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_started
+      judge0-executor:
+        condition: service_started
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks: [judge_net]
+
+  websocket-server:
+    build:
+      context: .
+      target: websocket-server
+    environment:
+      WS_PORT: 5001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-local-redis-password}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5001:5001"
+    restart: unless-stopped
+    networks: [judge_net]
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:5000/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://localhost:5001}
+    depends_on:
+      - backend-api
+      - websocket-server
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    networks: [judge_net]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  judge_net:
+    driver: bridge
+    internal: true
